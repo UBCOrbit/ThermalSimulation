@@ -68,9 +68,9 @@ appendToTemp(currentTemp)
 ## name = 'RegularOrbitIR'
 name = 'HighOrbitIR'
 
-## altitude = 400 #meters
-## altitude = 600 #meters
-altitude = 800 #meters
+## altitude = 4000 #meters
+## altitude = 6000 #meters
+altitude = 8000 #meters
 
 def sineRhoSquared():
     return radiusEarth**2 / ((altitude + radiusEarth)**2)

@@ -8,7 +8,7 @@ import csv
 import numpy as np
 import matplotlib.pyplot as plt
 
-numOrbits = 20
+numOrbits = 6
 
 percentAluminum = 0.3419
 percentAluminumA = 0.1574
@@ -35,6 +35,10 @@ emisivity = percentAluminum * emiAluminum + \
             percentPanel * emiPanel + \
             percentCell * emiCell 
 
+surfaceAreaTot = 0.153 # m^2
+surfaceAreaSun = surfaceAreaTot / 2
+surfaceAreaEarth = surfaceAreaTot / 2
+
 ## absortivity = (0.3*0.031) + (0.7*0.83) #Temporary absorbance value of outside surface
 ## emisivity = 0.3*0.039 + 0.7*0.67 #Temporary emmitance value for outside surface (Same case as absorbance)
 powerFromElectronics = 0 # watts
@@ -44,15 +48,16 @@ deltaTime = 1 ## seconds
 initialTemp = 273.15  ## Kelvin
 ambientTemp = 2.7 ## Kelvin
 sigma = 5.67 * (10**-8) #Boltzman Constant (w/(m^2 K^4))
+radiusEarth = 63781000 #meters
+fluxEarth = 273
+albedo = 0.3
 
 time = []
 temperature = []
-incommingRadiation = []
-surfaceArea = []
+incomingRadiation = []
 appendToTime = time.append
 appendToTemp = temperature.append
-appendToRad  = incommingRadiation.append
-appendToArea = surfaceArea.append
+appendToRad  = incomingRadiation.append
 
 currentTime = deltaTime
 currentTemp = initialTemp
@@ -63,11 +68,24 @@ appendToTemp(currentTemp)
 ## name = 'RegularOrbitIR'
 name = 'HighOrbitIR'
 
-def calculateTemperatureDelta(flux, surfaceArea, initialTemp):
-    powerFromRadiation = SA * fluxIn * absortivity
-    powerIn = powerFromRadiation + powerFromElectronics
-    powerOut = SA * emisivity * sigma * (np.power(currentTemp,4) - np.power(ambientTemp,4))
-    powerDelta = powerIn - powerOut
+## altitude = 400 #meters
+## altitude = 600 #meters
+altitude = 800 #meters
+
+def sineRhoSquared():
+    return radiusEarth**2 / ((altitude + radiusEarth)**2)
+
+def ka():
+    return 0.664 + 0.521*np.arcsin((sineRhoSquared()**(1/2))) + 0.203*(np.arcsin((sineRhoSquared()**(1/2)))**2)
+
+def calculateTemperatureDelta(fluxSun, initialTemp):
+    powerOut = -surfaceAreaTot * emisivity * sigma * (np.power(currentTemp,4) - np.power(ambientTemp,4))
+    powerInSun = surfaceAreaSun * absortivity * fluxSun
+    powerInEarth = surfaceAreaEarth * emisivity * fluxEarth * sineRhoSquared()
+    powerInAlbedo = surfaceAreaEarth * absortivity * albedo * fluxSun * ka() * sineRhoSquared()
+    powerInElectronics = powerFromElectronics
+
+    powerDelta = powerOut + powerInSun + powerInEarth + powerInAlbedo + powerInElectronics
    
     energyDelta = deltaTime * powerDelta
     temperatureDelta = energyDelta / (mass * heatCapacity)
@@ -79,12 +97,10 @@ with open('{}.csv'.format(name), 'r') as csv_file:
     next(csv_reader)
     next(csv_reader)
     for row in csv_reader:
-        fluxIn = float(row[4]) ## watts per meter squared
-        SA = float(row[3])
-        appendToRad(fluxIn)
-        appendToArea(SA)
+        fluxSun = float(row[4]) ## watts per meter squared
+        appendToRad(fluxSun)
         
-        temperatureDelta = calculateTemperatureDelta(fluxIn, SA, currentTemp)
+        temperatureDelta = calculateTemperatureDelta(fluxSun, currentTemp)
         currentTemp += temperatureDelta
     
         currentTime += deltaTime
@@ -92,8 +108,8 @@ with open('{}.csv'.format(name), 'r') as csv_file:
         appendToTemp(currentTemp)
     
 for i in range(0,numOrbits):
-    for flux,area in zip(incommingRadiation,surfaceArea):
-        temperatureDelta = calculateTemperatureDelta(flux, area, currentTemp)
+    for fluxSun in incomingRadiation:
+        temperatureDelta = calculateTemperatureDelta(fluxSun, currentTemp)
         currentTemp += temperatureDelta
     
         currentTime += deltaTime

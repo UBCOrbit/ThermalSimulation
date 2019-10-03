@@ -33,17 +33,18 @@ absortivity = percentAluminum * absAluminum + \
 emisivity = percentAluminum * emiAluminum + \
             percentAluminumA * emiAluminumA + \
             percentPanel * emiPanel + \
-            percentCell * emiCell 
+            percentCell * emiCell
 
 ## absortivity = (0.3*0.031) + (0.7*0.83) #Temporary absorbance value of outside surface
 ## emisivity = 0.3*0.039 + 0.7*0.67 #Temporary emmitance value for outside surface (Same case as absorbance)
 powerFromElectronics = 0 # watts
-mass = 3 # Kg 
+mass = 3 # Kg
 heatCapacity = 910 # j/(kg K)
-deltaTime = 1 ## seconds 
+deltaTime = 1 ## seconds
 initialTemp = 273.15  ## Kelvin
 ambientTemp = 2.7 ## Kelvin
 sigma = 5.67 * (10**-8) #Boltzman Constant (w/(m^2 K^4))
+satArea = 2*0.1**2 + 4*0.3*0.1
 
 time = []
 temperature = []
@@ -64,18 +65,18 @@ appendToTemp(currentTemp)
 name = 'HighOrbitIR'
 
 def calculateTemperatureDelta(flux, surfaceArea, initialTemp):
-    powerFromRadiation = SA * fluxIn * absortivity
+    powerFromRadiation = surfaceArea * flux * absortivity
     powerIn = powerFromRadiation + powerFromElectronics
-    powerOut = SA * emisivity * sigma * (np.power(currentTemp,4) - np.power(ambientTemp,4))
+    powerOut = satArea * emisivity * sigma * (np.power(currentTemp,4) - np.power(ambientTemp,4))
     powerDelta = powerIn - powerOut
-   
+    
     energyDelta = deltaTime * powerDelta
     temperatureDelta = energyDelta / (mass * heatCapacity)
     return temperatureDelta
 
 with open('{}.csv'.format(name), 'r') as csv_file:
     csv_reader = csv.reader(csv_file, delimiter = ',')
-  
+
     next(csv_reader)
     next(csv_reader)
     for row in csv_reader:
@@ -83,19 +84,18 @@ with open('{}.csv'.format(name), 'r') as csv_file:
         SA = float(row[3])
         appendToRad(fluxIn)
         appendToArea(SA)
-        
         temperatureDelta = calculateTemperatureDelta(fluxIn, SA, currentTemp)
         currentTemp += temperatureDelta
-    
+
         currentTime += deltaTime
         appendToTime(currentTime)
         appendToTemp(currentTemp)
-    
+
 for i in range(0,numOrbits):
     for flux,area in zip(incommingRadiation,surfaceArea):
         temperatureDelta = calculateTemperatureDelta(flux, area, currentTemp)
         currentTemp += temperatureDelta
-    
+
         currentTime += deltaTime
         appendToTime(currentTime)
         appendToTemp(currentTemp)
@@ -105,8 +105,3 @@ plt.xlabel('Time in Seconds')
 plt.ylabel('Temperature in Kelvin')
 plt.title('Temperature vs Time for {}'.format(name))
 plt.show()
-
-
-
-
-
